@@ -1,63 +1,115 @@
 language: r
-warnings_are_errors: true
-sudo: required
+warnings_are_errors: yes
 cache: packages
-
+bioc_required: yes
+cran: http://cran.rstudio.com
+dist: xenial
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libxml2-dev
+      - libfftw3-dev
+      - libgsl0-dev
+      - mesa-common-dev
+      - libglu1-mesa-dev
+      - devscripts
+      - libomp-dev
+      - libhdf5-serial-dev
+      - libhdf5-dev
 os:
   - linux
   - osx
-
+osx_image: xcode9.4
+services: xvfb
+r:
+  - 3.4
+  - 3.5
+  - 3.6
+  - release
+  - devel
+jobs:
+  allow_failures:
+    - r: devel
+env:
+  global:
+    - RGL_USE_NULL=TRUE
+    - PROJECT_NAME=neuroconductor-releases
+    - DISPLAY=:99.0
+    - R_REMOTES_NO_ERRORS_FROM_WARNINGS=true
+    - _R_CHECK_FORCE_SUGGESTS_=false
+    - CACHE_NAME="${TRAVIS_OS_NAME}-R-${TRAVIS_R_VERSION}"
+r_check_args: --as-cran --install-args=--build
 before_install:
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; 
-      then 
-        sudo apt-get update -qq ;
-        sudo apt-get install libmng2 ; 
-        sudo apt-get install libmng1 ; 
-        sudo updatedb;
-    fi
-  - wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py || echo "couldn't download";  
-  - python --version
-  - if [[ -f fslinstaller.py ]]; 
-    then
-      travis_wait 100 sudo python fslinstaller.py -d /usr/local/fsl --quiet || echo "couldn't install";    
-    fi
-  # - if [ "$TRAVIS_OS_NAME" = "linux" ]; 
-  #     then
-  #       OS_DISTRIBUTION=$(lsb_release -cs) ;
-  #       echo ${OS_DISTRIBUTION}; 
-  #       wget -O- http://neuro.debian.net/lists/${OS_DISTRIBUTION}.us-nh.full | sudo tee /etc/apt/sources.list.d/neurodebian.sources.list ;
-  #       sudo apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9 ;
-  #       sudo apt-get update -qq ;
-  #       sudo apt-get install -y fsl ;
-  #   fi
-  # - if [ "$TRAVIS_OS_NAME" = "osx" ]; 
-  #   then 
-  #     wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py ;
-  #     sudo python fslinstaller.py -d /usr/local/fsl -q ;
-  #   fi  
-
-r_check_args: "--as-cran --install-args=--build"
-
-after_success:
-  - Rscript -e 'covr::coveralls(type = "all")'
-  - Rscript -e 'covr::codecov(type = "all")'
-
-notifications:
-  email:
-    on_success: change
-    on_failure: change
-
-before_cache: Rscript -e 'remotes::install_cran("pkgdown")'
-
+  - if [ "$TRAVIS_DIST" = "trusty" ]; then sudo apt-get -y install libgsl0ldbl ; fi
+  - ulimit -n 2048
+  - export PROJ_DIR=`basename $PWD`
+  - fname=travis_helpers.sh
+  - wget -O ${fname} http://bit.ly/travis_helpers
+  - cat ${fname}; source ${fname}; rm ${fname}
+  - cat DESCRIPTION
+  - codename=`linux_codename`;
+  - start_xvfb ;
+  - export rver=`r_version`; echo $rver ;
+  - x=`export_clang_cxx`; eval ${x}
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then no_open_mp ; fi
+  - jags_install || true;
+  - if `need_v8`; then v8_install || true; fi
+  - dcmtk_install || true;
+  - gsl_install 2.1 || true ;
+  - echo "CC=${CC}, CXX=${CXX}, CXX1X=${CXX1X}"
+  - echo "CXX1XSTD=${CXX1XSTD}, CXX11=${CXX11}"
+  - echo "CXX1XSTD=${CXX1XSTD}, CXX11=${CXX11}"
+  - clang_cxx
+  - export cmake_version="3.11"
+  - cmake --version
+  - x=`cmake_setup`; echo "${x}"; eval ${x};
+  - cmake --version
+  - remove_neuroc_packages
+  - cat DESCRIPTION
+  - install_remotes_no_dep
+  - cat DESCRIPTION
+  - export PACKAGE_NAME=`package_name`
+  - echo "Package Name is $PACKAGE_NAME"
+  - if [[ "${PACKAGE_NAME}" == "waveslim" ]]; then fftw_install ; fi
+  - if [[ "${PACKAGE_NAME}" == "dti" || "${PACKAGE_NAME}" == "qMRI" ]]; then gsl_install
+    ; fi
+  - if [[ "${PACKAGE_NAME}" == "ROpenCVLite" || "${PACKAGE_NAME}" == "Rvision" ||
+    "${PACKAGE_NAME}" == "rtapas" || "${PACKAGE_NAME}" == "stapler" ]]; then shopt
+    -s expand_aliases ; x=`Rscript -e "cat(Sys.which('R'))"` ; echo "reset R" ; alias
+    R="travis_wait 100 ${x}" ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then if [ `need_hdf5` ]; then hdf5_install ;
+    fi fi
+  - setup_python 3.6 false ;
+  - install_python_requirements ;
+  - R CMD javareconf || true;
+  - sudo R CMD javareconf || true;
+after_success: dump_logs
+after_failure: dump_logs
+before_deploy:
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then PKG_TARBALL=$(ls -1t *.tgz | head -n 1);
+    PKG_TARBALL_WITH_R=`echo $PKG_TARBALL | sed 's/.tgz/_'"R${rver}"'.tgz/'` ; mv
+    ${PKG_TARBALL} ${PKG_TARBALL_WITH_R} ; echo "Built tarball is ${PKG_TARBALL_WITH_R}"
+    ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then PKG_TARBALL=$(ls -1t *.tar.gz | head
+    -n 1); PKG_TARBALL_WITH_R=`echo $PKG_TARBALL | sed 's/.tar.gz/_'"R${rver}"'.tar.gz/'`
+    ; mv ${PKG_TARBALL} ${PKG_TARBALL_WITH_R} ; echo "Built tarball is ${PKG_TARBALL_WITH_R}"
+    ; fi
+  - if [[ "${TRAVIS_OS_NAME}" = "osx" ]]; then rm -f *.tar.gz; fi
 deploy:
-  - provider: releases
-    skip_cleanup: true
-    file_glob: true    
-    file: fslr*.t*gz
-    on:
-      tags: true    
-      repo: muschellij2/fslr
-  - provider: script
-    script: Rscript -e 'pkgdown::deploy_site_github()'
-    skip_cleanup: true  
+  provider: releases
+  skip_cleanup: yes
+  token: $GITHUB_TOKEN
+  file_glob: yes
+  overwrite: yes
+  file: ${PACKAGE_NAME}*.t*gz
+  'on':
+    tags: yes
+after_deploy:
+  - echo "${PROJECT_NAME}" | grep -q "releases"; if [[ $? -eq 0 ]]; then run_coverage="false";
+    else run_coverage=; fi;
+  - if [[ "${TRAVIS_OS_NAME}" == "linux" && ${TRAVIS_R_VERSION_STRING} = "release"
+    && -z "${run_coverage}" ]]; then echo 'covr::coveralls(type = "all", quiet = FALSE)'
+    > neuroc_covr.R ; travis_wait 100 Rscript neuroc_covr.R ; rm neuroc_covr.R ; fi
 
+# neuroc.deps commit id:871f223
