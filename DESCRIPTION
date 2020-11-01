@@ -1,40 +1,37 @@
 Package: fslr
 Type: Package
-Title: Wrapper Functions for 'FSL' ('FMRIB' Software Library) from Functional MRI
-    of the Brain ('FMRIB')
+Title: Wrapper Functions for 'FSL' ('FMRIB' Software Library) from
+        Functional MRI of the Brain ('FMRIB')
 Version: 2.25.0
-Authors@R: c(person(given = "John",
-           family = "Muschelli",
-           email = "muschellij2@gmail.com",
-           role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0001-6469-1750")))
+Authors@R: c(person(given = "John", family = "Muschelli", email =
+        "muschellij2@gmail.com", role = c("aut", "cre"), comment =
+        c(ORCID = "0000-0001-6469-1750")))
 Maintainer: John Muschelli <muschellij2@gmail.com>
-Description: Wrapper functions that interface with 'FSL' 
-    <http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/>, a powerful and commonly-used 'neuroimaging'
-    software, using system commands. The goal is to be able to interface with 'FSL'
-    completely in R, where you pass R objects of class 'nifti', implemented by
-    package 'oro.nifti', and the function executes an 'FSL' command and returns an R
-    object of class 'nifti' if desired.
-Imports:
-    methods,
-    R.utils,
-    graphics,
-    grDevices,
-    RNifti,
-    stats, 
-    utils
-Depends:
-    oro.nifti (>= 0.5.0),
-    neurobase,
-    R (>= 3.2.0)
+Description: Wrapper functions that interface with 'FSL'
+        <http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/>, a powerful and
+        commonly-used 'neuroimaging' software, using system commands.
+        The goal is to be able to interface with 'FSL' completely in R,
+        where you pass R objects of class 'nifti', implemented by
+        package 'oro.nifti', and the function executes an 'FSL' command
+        and returns an R object of class 'nifti' if desired.
+Imports: methods, R.utils, graphics, grDevices, RNifti, stats, utils
+Depends: oro.nifti (>= 0.5.0), neurobase, R (>= 3.2.0)
 License: GPL-3
 VignetteBuilder: knitr
-Suggests:
+Suggests: 
     knitr,
     rmarkdown,
-    covr
+    covr,
+    testthat
 BugReports: https://github.com/muschellij2/fslr/issues
-SystemRequirements: FSL
+SystemRequirements: fsl
 NeuroDebian: fsl-complete
 RoxygenNote: 7.1.1
 Encoding: UTF-8
+Additional_repositories: https://neuroconductor.org/releases/2020/10/
+Repository: Neuroconductor-Releases
+Remotes: 
+    neuroconductor-releases/RNifti@e8e06065bc0fe8730f28d945d7c70cb8d7042a56,
+    neuroconductor-releases/oro.nifti@e68f8fa7e00dc917a459b9ebd529ac23924904d2,
+    neuroconductor-releases/neurobase@30073c8d9f39c1e114af0a004fc0d4f8f5832bc0
+biocViews: 
